@@ -3,4 +3,40 @@
   hosts: all
   gather_facts: no
   tasks:
-    - debug: msg="Hello World"
+    - name: delete web container
+      docker_container:
+        name: web_container
+        state: absent
+
+    - name: run web container
+      docker_container:
+        name: web_container
+        image: centos:7
+        tty: yes
+        interactive: yes
+        detach: yes
+        state: started
+      register: run_container_result
+
+    - name: install httpd to web container
+      command: >-
+        docker exec {{ run_container_result.ansible_facts.docker_container.Config.Hostname }} /bin/bash -c 'yum -y install httpd'
+
+    - name: start httpd on web container
+      command: >-
+        docker exec {{ run_container_result.ansible_facts.docker_container.Config.Hostname }} /bin/bash -c 'apachectl -f /etc/httpd/conf/httpd.conf'
+
+    - name: create test content
+      command: >-
+        docker exec {{ run_container_result.ansible_facts.docker_container.Config.Hostname }} /bin/bash -c 'echo "<html><body>test</bod></html>" > /var/www/html/index.html'
+
+    - name: web access test
+      uri:
+        url: "http://{{ run_container_result.ansible_facts.docker_container.NetworkSettings.IPAddress }}/"
+        method: GET
+        status_code: 200
+
+    - name: delete web container
+      docker_container:
+        name: web_container
+        state: absent
