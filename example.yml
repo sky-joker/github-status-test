@@ -1,0 +1,6 @@
+---
+- name: example playbook
+  hosts: all
+  gather_facts: no
+  tasks:
+    - debug: msg="Hello World"
